@@ -10,6 +10,8 @@ import {
   getSaleItemsBySaleId,
   markSalePaymentCompleted,
   getDb,
+  getDbInitError,
+  MOCK_UNITS,
 } from "../db";
 import { units, sellerCashRegisters } from "../../drizzle/schema";
 import { eq, inArray, and, sql, desc } from "drizzle-orm";
@@ -136,11 +138,14 @@ export const salesRouter = router({
       
       for (const item of input.items) {
         // Primero obtener la unidad para verificar su tipo
-        if (!db) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "No se pueden procesar ventas en modo demo." });
+        let baseUnit: any = null;
+        if (db) {
+          const [u] = await db.select().from(units).where(eq(units.id, item.unitId)).limit(1);
+          baseUnit = u;
+        } else {
+          baseUnit = (MOCK_UNITS as any[]).find((u: any) => u.id === item.unitId);
         }
-        
-        const [baseUnit] = await db.select().from(units).where(eq(units.id, item.unitId)).limit(1);
+
         if (!baseUnit) {
           throw new TRPCError({ code: "BAD_REQUEST", message: `La unidad ID ${item.unitId} no existe en el catálogo.` });
         }
@@ -158,17 +163,24 @@ export const salesRouter = router({
         } else if (isFungible) {
           // ✅ Productos fungibles: NO expandir, mantener como un solo item con quantity > 1
           // Verificar que hay suficiente stock
-          const availableCount = await db.select({ count: sql`count(*)` })
-            .from(units)
-            .where(
-              and(
-                eq(units.brand, baseUnit.brand),
-                eq(units.model, baseUnit.model),
-                eq(units.status, "available")
-              )
-            );
+          let stockCount = 0;
+          if (db) {
+            const availableCount = await db.select({ count: sql`count(*)` })
+              .from(units)
+              .where(
+                and(
+                  eq(units.brand, baseUnit.brand),
+                  eq(units.model, baseUnit.model),
+                  eq(units.status, "available")
+                )
+              );
+            stockCount = Number(availableCount[0]?.count || 0);
+          } else {
+            stockCount = (MOCK_UNITS as any[]).filter(
+              (u: any) => u.brand === baseUnit.brand && u.model === baseUnit.model && u.status === "available"
+            ).length;
+          }
           
-          const stockCount = Number(availableCount[0]?.count || 0);
           if (stockCount < item.quantity) {
             throw new TRPCError({ 
               code: "BAD_REQUEST", 
@@ -186,16 +198,23 @@ export const salesRouter = router({
         } else {
           // ❌ Productos únicos (laptops): expandir a múltiples unit IDs
           // Buscar unidades disponibles del mismo modelo
-          const availableUnits = await db.select({ id: units.id })
-            .from(units)
-            .where(
-              and(
-                eq(units.brand, baseUnit.brand),
-                eq(units.model, baseUnit.model),
-                eq(units.status, "available")
+          let availableUnits: any[] = [];
+          if (db) {
+            availableUnits = await db.select({ id: units.id })
+              .from(units)
+              .where(
+                and(
+                  eq(units.brand, baseUnit.brand),
+                  eq(units.model, baseUnit.model),
+                  eq(units.status, "available")
+                )
               )
-            )
-            .limit(item.quantity);
+              .limit(item.quantity);
+          } else {
+            availableUnits = (MOCK_UNITS as any[])
+              .filter((u: any) => u.brand === baseUnit.brand && u.model === baseUnit.model && u.status === "available")
+              .slice(0, item.quantity);
+          }
           
           if (availableUnits.length < item.quantity) {
             throw new TRPCError({ 

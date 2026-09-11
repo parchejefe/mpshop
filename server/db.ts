@@ -539,12 +539,31 @@ loadMocks();
 // Lazily create the drizzle instance so local tooling can run without a DB.
 let _dbInitError: string | null = null;
 
+export function resolveDatabaseUrl(): string | undefined {
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim()) {
+    return process.env.DATABASE_URL.trim();
+  }
+  const fallback =
+    process.env.MYSQL_URL?.trim() ||
+    process.env.MYSQL_PRIVATE_URL?.trim() ||
+    (process.env.MYSQLHOST && process.env.MYSQLUSER
+      ? `mysql://${encodeURIComponent(process.env.MYSQLUSER)}:${encodeURIComponent(process.env.MYSQLPASSWORD || "")}@${process.env.MYSQLHOST}:${process.env.MYSQLPORT || 3306}/${process.env.MYSQLDATABASE || "railway"}`
+      : undefined);
+
+  if (fallback) {
+    process.env.DATABASE_URL = fallback;
+    console.log("[Database] DATABASE_URL resuelto automáticamente desde variables de Railway");
+  }
+  return process.env.DATABASE_URL;
+}
+
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  const dbUrl = resolveDatabaseUrl();
+  if (!_db && dbUrl) {
     try {
       if (!_pool) {
         _pool = mysql.createPool({
-          uri: process.env.DATABASE_URL,
+          uri: dbUrl,
           // Convert BigInt (LONGLONG) and Decimal to plain JS numbers
           // This prevents "Unable to transform response from server" errors in tRPC/superjson
           typeCast(field: any, next: () => any) {

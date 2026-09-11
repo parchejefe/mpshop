@@ -18,6 +18,20 @@ import * as schema from "../../drizzle/schema";
 import { ensureTables } from "../../scripts/ensure_tables";
 import { csrfMiddleware, validateCSRF, getCSRFTokenEndpoint } from "./csrf";
 
+// Auto-detect DATABASE_URL from Railway or alternative environment variables
+if (!process.env.DATABASE_URL || !process.env.DATABASE_URL.trim()) {
+  const detected =
+    process.env.MYSQL_URL?.trim() ||
+    process.env.MYSQL_PRIVATE_URL?.trim() ||
+    (process.env.MYSQLHOST && process.env.MYSQLUSER
+      ? `mysql://${encodeURIComponent(process.env.MYSQLUSER)}:${encodeURIComponent(process.env.MYSQLPASSWORD || "")}@${process.env.MYSQLHOST}:${process.env.MYSQLPORT || 3306}/${process.env.MYSQLDATABASE || "railway"}`
+      : undefined);
+  if (detected) {
+    process.env.DATABASE_URL = detected;
+    console.log("[Environment] Auto-detected DATABASE_URL from Railway MySQL variables");
+  }
+}
+
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
     const server = net.createServer();
