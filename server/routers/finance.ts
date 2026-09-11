@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
+import { toPlainObject } from "../_core/serialize";
 import {
   getCashClosureByUserIdAndDate,
   createCashClosure,
@@ -175,7 +176,7 @@ export const financeRouter = router({
     });
 
     // Ordenar DESC para mostrar lo más reciente primero
-    return calculatedRows.sort((a: any, b: any) => {
+    return toPlainObject(calculatedRows.sort((a: any, b: any) => {
       const timeA = new Date(a.createdAt).getTime();
       const timeB = new Date(b.createdAt).getTime();
       if (timeA !== timeB) return timeB - timeA;
@@ -184,7 +185,7 @@ export const financeRouter = router({
       if (a.isOpening && !b.isOpening) return 1;
       if (!a.isOpening && b.isOpening) return -1;
       return 0;
-    });
+    }));
   }),
 
   getGlobalBalances: protectedProcedure
@@ -241,7 +242,7 @@ export const financeRouter = router({
       const qrData = calc("qr");
       const transferData = calc("transfer");
 
-      return {
+      return toPlainObject({
         cash: cashData.balance,
         qr: qrData.balance,
         transfer: transferData.balance,
@@ -250,7 +251,7 @@ export const financeRouter = router({
           qr: qrData,
           transfer: transferData,
         }
-      };
+      });
     }),
 
 
@@ -560,10 +561,10 @@ export const financeRouter = router({
     if (!userId) return { hasPending: false };
     const closures = await getCashClosuresByUserId(userId);
     const pendingClosure = closures.find((c: any) => c.status === "pending");
-    return { 
+    return toPlainObject({ 
       hasPending: !!pendingClosure,
       pendingClosure 
-    };
+    });
   }),
 
   hasActiveOpening: protectedProcedure
@@ -591,7 +592,7 @@ export const financeRouter = router({
         )
         .limit(1);
 
-      return { hasActive: !!sellerBox, activeOpening: sellerBox || null };
+      return toPlainObject({ hasActive: !!sellerBox, activeOpening: sellerBox || null });
     }
 
     const method = input?.paymentMethod || "cash";
@@ -602,10 +603,10 @@ export const financeRouter = router({
       activeOpening = await getActiveCashOpeningByUserIdAndMethod(userId, "cash");
     }
 
-    return { 
+    return toPlainObject({ 
       hasActive: !!activeOpening && activeOpening.status === "open",
       activeOpening 
-    };
+    });
   }),
 
   // Obtener monto pendiente de órdenes sin entregar del repartidor

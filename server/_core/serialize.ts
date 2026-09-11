@@ -6,11 +6,18 @@
  */
 export function toPlainObject<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj;
+  if (typeof obj === "bigint") return Number(obj) as unknown as T;
   if (Array.isArray(obj)) return obj.map(toPlainObject) as unknown as T;
-  if (typeof obj === 'object' && obj !== null) {
-    // Usar JSON.parse(JSON.stringify()) es la forma más confiable
-    // de eliminar todos los Proxies y getters de Drizzle
-    return JSON.parse(JSON.stringify(obj));
+  if (typeof obj === "object") {
+    try {
+      return JSON.parse(
+        JSON.stringify(obj, (_key, value) =>
+          typeof value === "bigint" ? Number(value) : value
+        )
+      );
+    } catch {
+      return obj;
+    }
   }
   return obj;
 }

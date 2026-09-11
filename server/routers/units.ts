@@ -229,10 +229,10 @@ export const unitsRouter = router({
         };
       });
 
-      return {
+      return toPlainObject({
         items: sanitizedItems,
         total: Number(countResult[0]?.count || 0),
-      };
+      });
     }),
 
   // Buscar unidad por código (QR, Barcode o código interno)

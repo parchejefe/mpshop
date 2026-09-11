@@ -15,29 +15,31 @@ import { accountsPayable, financialTransactions, purchases, purchaseItems, suppl
 import { eq, sql } from "drizzle-orm";
 import { getLocalDateKey } from "../_core/date_utils";
 
+import { toPlainObject } from "../_core/serialize";
+
 export const creditRouter = router({
   // ------ CUENTAS POR COBRAR (CXC) ------
   listReceivable: protectedProcedure.query(async ({ ctx }) => {
     if (ctx.user?.role !== "admin") {
-      throw new TRPCError({ code: "FORBIDDEN" });
+      return [];
     }
-    return await getAllAccountsReceivable();
+    return toPlainObject(await getAllAccountsReceivable());
   }),
 
   // ------ CUENTAS POR PAGAR (CXP) ------
   listPayable: protectedProcedure.query(async ({ ctx }) => {
     if (ctx.user?.role !== "admin") {
-      throw new TRPCError({ code: "FORBIDDEN" });
+      return [];
     }
-    return await getAllAccountsPayable();
+    return toPlainObject(await getAllAccountsPayable());
   }),
 
   // ------ HISTORIAL DE ABONOS ------
   listPayments: protectedProcedure.query(async ({ ctx }) => {
     if (ctx.user?.role !== "admin") {
-      throw new TRPCError({ code: "FORBIDDEN" });
+      return [];
     }
-    return await getAllCreditPayments();
+    return toPlainObject(await getAllCreditPayments());
   }),
 
   // ------ ESTADO DE CRÉDITO DE UN CLIENTE ------

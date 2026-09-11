@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
+import { toPlainObject } from "../_core/serialize";
 import {
   getOperationalExpenses,
   getOperationalExpenseById,
@@ -117,7 +118,7 @@ export const expensesRouter = router({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const rawExpenses = await getOperationalExpenses(input?.branchId || ctx.branchId);
-      return filterExpenses(rawExpenses as any[], input);
+      return toPlainObject(filterExpenses(rawExpenses as any[], input));
     }),
 
   getById: protectedProcedure
@@ -130,7 +131,7 @@ export const expensesRouter = router({
       if (!expense) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Gasto no encontrado" });
       }
-      return expense;
+      return toPlainObject(expense);
     }),
 
   create: protectedProcedure
@@ -157,7 +158,7 @@ export const expensesRouter = router({
       // Determinar costType según categoría si no fue provisto
       const costType = input.costType || inferCostType(input.category);
 
-      return await createOperationalExpense({
+      const result = await createOperationalExpense({
         ...input,
         costType,
         isAutomatic: 0,
@@ -166,6 +167,7 @@ export const expensesRouter = router({
         expenseDate: input.expenseDate ? new Date(input.expenseDate) : new Date(),
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
       });
+      return toPlainObject(result);
     }),
 
   update: protectedProcedure
@@ -285,7 +287,7 @@ export const expensesRouter = router({
         }
       }
 
-      return summary;
+      return toPlainObject(summary);
     }),
 
   // Totales generales desglosados por costType y filtros aplicados
@@ -327,7 +329,7 @@ export const expensesRouter = router({
         }
       }
 
-      return {
+      return toPlainObject({
         totalPending,
         totalPaid,
         total: totalPending + totalPaid,
@@ -335,7 +337,7 @@ export const expensesRouter = router({
         countPaid,
         count: (expenses as any[]).length,
         byType,
-      };
+      });
     }),
 
   // 🟡 MEDIO #2: Endpoint que expone el catálogo normalizado al frontend

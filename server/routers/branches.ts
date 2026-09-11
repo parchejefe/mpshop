@@ -2,11 +2,12 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { getAllBranches, getBranchById, createBranch, updateBranch, deleteBranch } from "../db";
+import { toPlainObject } from "../_core/serialize";
 
 export const branchesRouter = router({
   list: protectedProcedure.query(async () => {
     const branches = await getAllBranches();
-    return branches;
+    return toPlainObject(branches);
   }),
 
   getById: protectedProcedure
@@ -16,7 +17,7 @@ export const branchesRouter = router({
       if (!branch) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Branch not found" });
       }
-      return branch;
+      return toPlainObject(branch);
     }),
 
   create: protectedProcedure
@@ -34,7 +35,7 @@ export const branchesRouter = router({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       const result = await createBranch(input);
-      return result;
+      return toPlainObject(result);
     }),
 
   update: protectedProcedure

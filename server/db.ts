@@ -2463,7 +2463,7 @@ export async function getFinancialTransactions(userId?: number, branchId?: numbe
   if (userId) {
     query = query.where(eq(financialTransactions.userId, userId));
   }
-  return await query;
+  return toPlainObject(await query);
 }
 
 export async function createDeliveryExpense(data: any) {
@@ -2572,7 +2572,7 @@ export async function getOperationalExpenses(branchId?: number) {
   if (branchId) {
     query = query.where(eq(operationalExpenses.branchId, branchId));
   }
-  return await query;
+  return toPlainObject(await query);
 }
 
 export async function getOperationalExpenseById(id: number) {
@@ -2581,7 +2581,7 @@ export async function getOperationalExpenseById(id: number) {
     return MOCK_OPERATIONAL_EXPENSES.find((e: any) => e.id === id);
   }
   const result = await db.select().from(operationalExpenses).where(eq(operationalExpenses.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  return result.length > 0 ? toPlainObject(result[0]) : undefined;
 }
 
 export async function createOperationalExpense(data: any) {
@@ -2830,7 +2830,7 @@ export async function getActiveCashOpeningByUserIdAndMethod(userId: number, paym
     .where(sql`${cashOpenings.responsibleUserId} = ${userId} AND (${cashOpenings.paymentMethod} = ${paymentMethod} OR (${cashOpenings.paymentMethod} IS NULL AND ${paymentMethod} = 'cash')) AND ${cashOpenings.status} = 'open'`)
     .limit(1);
 
-  return result.length > 0 ? result[0] : undefined;
+  return result.length > 0 ? toPlainObject(result[0]) : undefined;
 }
 
 export async function createCashOpening(data: InsertCashOpening) {
@@ -2901,7 +2901,7 @@ export async function getAllCashOpenings() {
       .sort((a, b) => `${b.openingDate} ${String(b.id).padStart(5, "0")}`.localeCompare(`${a.openingDate} ${String(a.id).padStart(5, "0")}`));
   }
 
-  return await db
+  return toPlainObject(await db
     .select({
       id: cashOpenings.id,
       openingDate: cashOpenings.openingDate,
@@ -2916,7 +2916,7 @@ export async function getAllCashOpenings() {
       openedByUserName: sql<string>`(select name from users where users.id = ${cashOpenings.openedByUserId})`,
     })
     .from(cashOpenings)
-    .orderBy(sql`${cashOpenings.openingDate} desc, ${cashOpenings.id} desc`);
+    .orderBy(sql`${cashOpenings.openingDate} desc, ${cashOpenings.id} desc`));
 }
 
 // Cierres de Caja
@@ -2990,7 +2990,7 @@ export async function getAllCashClosures(branchId?: number) {
     query = query.where(eq(cashClosures.branchId, branchId));
   }
 
-  return await query;
+  return toPlainObject(await query);
 }
 
 export async function getCashClosuresByUserId(userId: number) {
@@ -3002,7 +3002,7 @@ export async function getCashClosuresByUserId(userId: number) {
       .sort((a, b) => `${b.date} ${String(b.id).padStart(5, "0")}`.localeCompare(`${a.date} ${String(a.id).padStart(5, "0")}`));
   }
 
-  return await db.select().from(cashClosures).where(eq(cashClosures.userId, userId)).orderBy(desc(cashClosures.createdAt));
+  return toPlainObject(await db.select().from(cashClosures).where(eq(cashClosures.userId, userId)).orderBy(desc(cashClosures.createdAt)));
 }
 
 export async function getCashClosureById(id: number) {
@@ -3011,7 +3011,7 @@ export async function getCashClosureById(id: number) {
     return MOCK_CASH_CLOSURES.find(c => c.id === id);
   }
   const result = await db.select().from(cashClosures).where(eq(cashClosures.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  return result.length > 0 ? toPlainObject(result[0]) : undefined;
 }
 
 export async function updateCashClosure(id: number, data: any) {
@@ -4180,16 +4180,16 @@ export async function getAllSales(branchId?: number, soldBy?: number) {
     db.select({ id: branches.id, name: branches.name }).from(branches),
   ]);
 
-  return rawSales
+  return toPlainObject(rawSales
     .map((sale: any) => mapSaleWithRelations(sale, usersList, customersList, branchesList))
-    .sort((a: any, b: any) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
+    .sort((a: any, b: any) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime()));
 }
 
 export async function getSaleById(saleId: number) {
   const db = await getDb();
   if (!db) {
     const sale = MOCK_SALES.find((entry: any) => entry.id === saleId);
-    return sale ? mapSaleWithRelations(sale, MOCK_USERS, MOCK_CUSTOMERS, MOCK_BRANCHES) : null;
+    return sale ? toPlainObject(mapSaleWithRelations(sale, MOCK_USERS, MOCK_CUSTOMERS, MOCK_BRANCHES)) : null;
   }
 
   const [result, usersList, customersList, branchesList] = await Promise.all([
@@ -4207,7 +4207,7 @@ export async function getSaleById(saleId: number) {
     db.select({ id: branches.id, name: branches.name }).from(branches),
   ]);
 
-  return result[0] ? mapSaleWithRelations(result[0], usersList, customersList, branchesList) : null;
+  return result[0] ? toPlainObject(mapSaleWithRelations(result[0], usersList, customersList, branchesList)) : null;
 }
 
 export async function getSaleItemsBySaleId(saleId: number) {
@@ -4265,7 +4265,7 @@ export async function getSaleItemsBySaleId(saleId: number) {
     };
   }));
   // Se devuelven todos los items (incluyendo huerfanos) para preservar el historial completo de ventas.
-  return resolved;
+  return toPlainObject(resolved);
 }
 
 export async function getOnOrderQuantities() {
@@ -4632,7 +4632,7 @@ export async function getBranchById(id: number) {
     return MOCK_BRANCHES.find((b) => b.id === id);
   }
   const result = await db.select().from(branches).where(eq(branches.id, id)).limit(1);
-  return result.length > 0 ? result[0] : null;
+  return result.length > 0 ? toPlainObject(result[0]) : null;
 }
 
 export async function deleteBranch(id: number) {
@@ -4766,7 +4766,7 @@ export async function getAllAccountsReceivable() {
     .leftJoin(sales, eq(accountsReceivable.saleId, sales.id))
     .orderBy(desc(accountsReceivable.id));
 
-  return rows.map((ar: any) => {
+  return toPlainObject(rows.map((ar: any) => {
     let status = ar.status;
     if (status !== "paid" && ar.dueDate && ar.dueDate < todayStr) {
       status = "overdue";
@@ -4778,7 +4778,7 @@ export async function getAllAccountsReceivable() {
       customerName: ar.customerName || "Anónimo",
       saleNumber: ar.saleNumber || `VTA-${ar.saleId}`,
     };
-  });
+  }));
 }
 
 export async function getAllAccountsPayable() {
@@ -4834,7 +4834,7 @@ export async function getAllAccountsPayable() {
     .leftJoin(purchases, eq(accountsPayable.purchaseId, purchases.id))
     .orderBy(desc(accountsPayable.id));
 
-  return rows.map((ap: any) => {
+  return toPlainObject(rows.map((ap: any) => {
     let status = ap.status;
     if (status !== "paid" && ap.dueDate && ap.dueDate < todayStr) {
       status = "overdue";
@@ -4846,7 +4846,7 @@ export async function getAllAccountsPayable() {
       supplierName: ap.supplierName || "Proveedor Sistema",
       purchaseNumber: ap.purchaseNumber || `CMP-${ap.purchaseId}`,
     };
-  });
+  }));
 }
 
 export async function createCreditPayment(data: {
@@ -5132,11 +5132,11 @@ export async function getAllCreditPayments() {
     .leftJoin(suppliers, eq(creditPayments.supplierId, suppliers.id))
     .orderBy(desc(creditPayments.id));
 
-  return rows.map((p: any) => ({
+  return toPlainObject(rows.map((p: any) => ({
     ...p,
     userName: p.userName || "Desconocido",
     entityName: p.customerName || p.supplierName || "N/A",
-  }));
+  })));
 }
 
 
