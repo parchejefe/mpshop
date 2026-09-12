@@ -434,6 +434,23 @@ async function startServer() {
   app.get("/api/debug-db-status", async (_req, res) => {
     const { getDb, getDbInitError } = await import("../db");
     const db = await getDb();
+    let sellerCashTable = false;
+    let sellerColumns: any = [];
+    try {
+      const mysql = await import("mysql2/promise");
+      if (process.env.DATABASE_URL) {
+        const conn = await mysql.default.createConnection(process.env.DATABASE_URL);
+        const [rows]: any = await conn.query("SHOW TABLES LIKE 'seller_cash_registers'");
+        sellerCashTable = rows.length > 0;
+        if (sellerCashTable) {
+          const [cols]: any = await conn.query("SHOW COLUMNS FROM seller_cash_registers");
+          sellerColumns = cols.map((c: any) => c.Field);
+        }
+        await conn.end();
+      }
+    } catch (e: any) {
+      sellerColumns = [e.message];
+    }
     res.json({
       dbConnected: !!db,
       envHasDatabaseUrl: !!process.env.DATABASE_URL,
@@ -441,6 +458,9 @@ async function startServer() {
         ? process.env.DATABASE_URL.substring(0, 15)
         : "missing",
       initError: getDbInitError(),
+      sellerCashTable,
+      sellerColumns,
+      version: "v1.5.1-cash-fix"
     });
   });
 
