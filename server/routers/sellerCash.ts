@@ -708,37 +708,22 @@ export const sellerCashRouter = router({
         })
         .where(eq(sellerCashRegisters.id, input.cashRegisterId));
       
-      // Integración Financiera: Registrar cierre consolidado en cash_closures
+      // Integración Financiera: Registrar ingreso del efectivo físico rendido a la Caja Principal
       try {
-        await db.insert(cashClosures).values({
-          branchId: cashRegister.branchId,
-          userId: cashRegister.sellerId,
-          date: cashRegister.date,
-          initialCash: cashRegister.initialCash,
-          reportedCash: cashRegister.reportedCash || 0,
-          reportedQr: cashRegister.reportedQr || 0,
-          reportedTransfer: cashRegister.reportedTransfer || 0,
-          expectedCash,
-          expectedQr: cashRegister.salesQr,
-          expectedTransfer: cashRegister.salesTransfer,
-          expenses: cashRegister.totalExpenses,
-          pendingOrders: 0,
-          status: "approved",
-          adminNotes: input.notes || `Cierre aprobado caja vendedor #${cashRegister.sellerId} (Turno #${cashRegister.turnNumber})`,
-          createdAt: now,
-        });
-
-        // Cerrar aperturas pendientes del vendedor en la fecha
-        await db
-          .update(cashOpenings)
-          .set({ status: "closed" })
-          .where(
-            and(
-              eq(cashOpenings.responsibleUserId, cashRegister.sellerId),
-              eq(cashOpenings.openingDate, cashRegister.date),
-              eq(cashOpenings.status, "open")
-            )
-          );
+        const reportedCash = cashRegister.reportedCash ?? 0;
+        if (reportedCash > 0) {
+          await db.insert(financialTransactions).values({
+            branchId: cashRegister.branchId,
+            type: "income",
+            category: "seller_cash_settlement",
+            paymentMethod: "cash",
+            amount: reportedCash,
+            userId: ctx.user.id,
+            referenceId: cashRegister.id,
+            notes: `Entrada Caja Principal: Efectivo rendido por vendedor #${cashRegister.sellerId} (Caja #${cashRegister.id} Turno #${cashRegister.turnNumber})`,
+            createdAt: now,
+          });
+        }
 
         // Registro de ajustes por diferencias en arqueo (solo si hay diferencia real >= Bs. 1)
         if (diffCash <= -100) {
@@ -768,23 +753,8 @@ export const sellerCashRouter = router({
             createdAt: now,
           });
         }
-
-        // Reingreso del fondo inicial a la Caja Principal
-        if (cashRegister.initialCash > 0) {
-          await db.insert(financialTransactions).values({
-            branchId: cashRegister.branchId,
-            type: "income",
-            category: "caja_vendedor_devolucion_fondo",
-            paymentMethod: "cash",
-            amount: cashRegister.initialCash,
-            userId: ctx.user.id,
-            referenceId: cashRegister.id,
-            notes: `Entrada Caja Principal: Retorno de fondo de cambio de caja vendedor #${cashRegister.sellerId} (Caja #${cashRegister.id} Turno #${cashRegister.turnNumber})`,
-            createdAt: now,
-          });
-        }
       } catch (financeErr: any) {
-        console.warn("[SellerCash->Finance] Error al registrar cierre en finanzas:", financeErr.message);
+        console.warn("[SellerCash->Finance] Error al registrar liquidación en finanzas:", financeErr.message);
       }
       
       return { success: true, message: "Cierre aprobado correctamente y liquidado en Finanzas" };
