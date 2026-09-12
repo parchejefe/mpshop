@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
+import { toPlainObject } from "../_core/serialize";
 import {
   cancelSaleRecord,
   createSaleWithItems,
@@ -361,7 +362,7 @@ export const salesRouter = router({
           }
         }
 
-        return { success: true, saleId, saleNumber };
+        return toPlainObject({ success: true, saleId: Number(saleId), saleNumber });
       } catch (error) {
         throw new TRPCError({
           code: "BAD_REQUEST",

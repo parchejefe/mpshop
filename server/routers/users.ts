@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
+import { toPlainObject } from "../_core/serialize";
 import { hashPassword } from "../auth";
 import { 
   getAllUsers, 
@@ -255,33 +256,41 @@ export const usersRouter = router({
         special = ROLE_TEMPLATES[input.role].specialPermissions;
       }
 
-      const result = await createUser({
-        username: input.username,
-        passwordHash,
-        name: input.name,
-        email: input.email || null,
-        phone: input.phone || null,
-        role: input.role,
-        status: input.status,
-        allowedModules: JSON.stringify(modules || []),
-        specialPermissions: JSON.stringify(special || {}),
-        assignedBranchIds: JSON.stringify(input.assignedBranchIds || ["all"]),
-        loginMethod: "traditional",
-      });
+      try {
+        const result = await createUser({
+          username: input.username,
+          passwordHash,
+          name: input.name,
+          email: input.email || null,
+          phone: input.phone || null,
+          role: input.role,
+          status: input.status,
+          allowedModules: JSON.stringify(modules || []),
+          specialPermissions: JSON.stringify(special || {}),
+          assignedBranchIds: JSON.stringify(input.assignedBranchIds || ["all"]),
+          loginMethod: "traditional",
+        });
 
-      // Extraer el insertId de forma segura
-      let userId: number | undefined;
-      if (Array.isArray(result) && result.length > 0 && typeof result[0] === 'object' && 'insertId' in result[0]) {
-        userId = Number(result[0].insertId);
-      } else if (result && typeof result === 'object' && 'insertId' in result) {
-        userId = Number((result as any).insertId);
+        // Extraer el insertId de forma segura
+        let userId: number | undefined;
+        if (Array.isArray(result) && result.length > 0 && typeof result[0] === 'object' && 'insertId' in result[0]) {
+          userId = Number(result[0].insertId);
+        } else if (result && typeof result === 'object' && 'insertId' in result) {
+          userId = Number((result as any).insertId);
+        }
+
+        return toPlainObject({
+          success: true,
+          message: "Usuario creado exitosamente con permisos asignados",
+          userId,
+        });
+      } catch (err: any) {
+        console.error("[users.create] Error:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err?.message || "Error al crear el usuario",
+        });
       }
-
-      return {
-        success: true,
-        message: "Usuario creado exitosamente con permisos asignados",
-        userId,
-      };
     }),
 
   // Actualizar usuario
@@ -320,12 +329,19 @@ export const usersRouter = router({
       if (input.specialPermissions !== undefined) updateData.specialPermissions = JSON.stringify(input.specialPermissions);
       if (input.assignedBranchIds !== undefined) updateData.assignedBranchIds = JSON.stringify(input.assignedBranchIds);
 
-      await updateUser(input.id, updateData);
-
-      return {
-        success: true,
-        message: "Usuario actualizado correctamente",
-      };
+      try {
+        await updateUser(input.id, updateData);
+        return toPlainObject({
+          success: true,
+          message: "Usuario actualizado correctamente",
+        });
+      } catch (err: any) {
+        console.error("[users.update] Error:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err?.message || "Error al actualizar el usuario",
+        });
+      }
     }),
 
   // Alternar estado activo / inactivo
@@ -339,11 +355,18 @@ export const usersRouter = router({
         });
       }
 
-      await updateUser(input.id, { status: input.status });
-      return {
-        success: true,
-        message: `Usuario ${input.status === "active" ? "activado" : "desactivado"} con éxito`,
-      };
+      try {
+        await updateUser(input.id, { status: input.status });
+        return toPlainObject({
+          success: true,
+          message: `Usuario ${input.status === "active" ? "activado" : "desactivado"} con éxito`,
+        });
+      } catch (err: any) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err?.message || "Error al cambiar estado",
+        });
+      }
     }),
 
   // Eliminar usuario
@@ -364,12 +387,18 @@ export const usersRouter = router({
         });
       }
 
-      await deleteUser(input.id);
-
-      return {
-        success: true,
-        message: "Usuario eliminado correctamente",
-      };
+      try {
+        await deleteUser(input.id);
+        return toPlainObject({
+          success: true,
+          message: "Usuario eliminado correctamente",
+        });
+      } catch (err: any) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err?.message || "Error al eliminar usuario",
+        });
+      }
     }),
 
   // ─── Retrocompatibilidad con nombres anteriores ───
