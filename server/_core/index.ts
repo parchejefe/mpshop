@@ -1176,10 +1176,9 @@ async function startServer() {
 
   console.log(`[App] Version ${APP_VERSION} starting...`);
 
-  // tRPC API con validación CSRF
+  // tRPC API
   app.use(
     "/api/trpc",
-    validateCSRF, // Validar CSRF en todas las mutaciones tRPC
     createExpressMiddleware({
       router: appRouter,
       createContext,

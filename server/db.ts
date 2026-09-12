@@ -4625,8 +4625,9 @@ export async function createBranch(data: any) {
     return { insertId: newId };
   }
   
-  const result = await db.insert(branches).values(data);
-  return { insertId: Number(result[0]?.insertId ?? (result as any).insertId ?? 0) };
+  const raw = await db.insert(branches).values(data);
+  const header = raw?.[0] as any;
+  return { insertId: Number(header?.insertId ?? (raw as any)?.insertId ?? 0) };
 }
 
 export async function updateBranch(id: number, data: any) {

@@ -32,10 +32,18 @@ export const branchesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       if (ctx.user?.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Solo los administradores pueden crear sucursales" });
       }
-      const result = await createBranch(input);
-      return toPlainObject(result);
+      try {
+        const result = await createBranch(input);
+        return toPlainObject(result);
+      } catch (err: any) {
+        console.error("[branches.create] Error:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err?.message || "Error al crear la sucursal",
+        });
+      }
     }),
 
   update: protectedProcedure
@@ -51,23 +59,31 @@ export const branchesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       if (ctx.user?.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Solo los administradores pueden modificar sucursales" });
       }
       
-      const { id, ...data } = input;
-      const result = await updateBranch(id, data);
-      return result;
+      try {
+        const { id, ...data } = input;
+        const result = await updateBranch(id, data);
+        return toPlainObject(result);
+      } catch (err: any) {
+        console.error("[branches.update] Error:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err?.message || "Error al actualizar sucursal",
+        });
+      }
     }),
 
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user?.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Solo los administradores pueden eliminar sucursales" });
       }
       try {
         const result = await deleteBranch(input.id);
-        return result;
+        return toPlainObject(result);
       } catch (err: any) {
         throw new TRPCError({ code: "BAD_REQUEST", message: err.message || "Error al eliminar sucursal" });
       }

@@ -152,22 +152,30 @@ export const expensesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       if (ctx.user?.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Solo los administradores pueden registrar gastos" });
       }
 
       // Determinar costType según categoría si no fue provisto
       const costType = input.costType || inferCostType(input.category);
 
-      const result = await createOperationalExpense({
-        ...input,
-        costType,
-        isAutomatic: 0,
-        userId: ctx.user.id,
-        branchId: ctx.branchId,
-        expenseDate: input.expenseDate ? new Date(input.expenseDate) : new Date(),
-        dueDate: input.dueDate ? new Date(input.dueDate) : null,
-      });
-      return toPlainObject(result);
+      try {
+        const result = await createOperationalExpense({
+          ...input,
+          costType,
+          isAutomatic: 0,
+          userId: ctx.user.id,
+          branchId: ctx.branchId,
+          expenseDate: input.expenseDate ? new Date(input.expenseDate) : new Date(),
+          dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        });
+        return toPlainObject(result);
+      } catch (err: any) {
+        console.error("[expenses.create] Error:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err?.message || "Error al registrar el gasto",
+        });
+      }
     }),
 
   update: protectedProcedure
