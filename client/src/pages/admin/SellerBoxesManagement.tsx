@@ -398,10 +398,10 @@ export default function SellerBoxesManagement() {
                       const sysQr     = cr.salesQr ?? 0;
                       const sysTrans  = cr.salesTransfer ?? 0;
                       
-                      // Usar diferencias calculadas en backend (CRÍTICO #1)
-                      const diffCash  = cr.differenceCash ?? ((cr.reportedCash ?? 0) - sysCash);
-                      const diffQr    = cr.differenceQr ?? ((cr.reportedQr ?? 0) - sysQr);
-                      const diffTrans = cr.differenceTransfer ?? ((cr.reportedTransfer ?? 0) - sysTrans);
+                      // Calcular diferencias en tiempo real con respecto al estado actual del sistema
+                      const diffCash  = (cr.reportedCash ?? 0) - sysCash;
+                      const diffQr    = (cr.reportedQr ?? 0) - sysQr;
+                      const diffTrans = (cr.reportedTransfer ?? 0) - sysTrans;
                       
                       const diffCashOk = Math.abs(diffCash) < 100; // < Bs 1
                       const diffQrOk = Math.abs(diffQr) < 100;
@@ -416,18 +416,20 @@ export default function SellerBoxesManagement() {
                           <TableCell className="font-mono text-slate-500">{formatCurrency(sysCash)}</TableCell>
                           <TableCell>
                             <span className={`font-bold font-mono ${diffCashOk ? "text-emerald-600" : diffCash > 0 ? "text-blue-600" : "text-red-600"}`}>
-                              {diffCash >= 0 ? "+" : ""}{formatCurrency(Math.abs(diffCash))}
-                              {!diffCashOk && <span className="ml-1 text-[10px]">{diffCash > 0 ? "💰" : "⚠️"}</span>}
+                              {diffCashOk ? "+Bs. 0,00" : `${diffCash > 0 ? "+" : "-"}${formatCurrency(Math.abs(diffCash))}`}
+                              {!diffCashOk && <span className="ml-1 text-[10px]">{diffCash > 0 ? "💰 (Sobrante)" : "⚠️ (Faltante)"}</span>}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className={`font-bold font-mono ${diffQrOk ? "text-emerald-600" : diffQr > 0 ? "text-blue-600" : "text-red-600"}`}>
-                              {diffQr >= 0 ? "+" : ""}{formatCurrency(Math.abs(diffQr))}
+                              {diffQrOk ? "+Bs. 0,00" : `${diffQr > 0 ? "+" : "-"}${formatCurrency(Math.abs(diffQr))}`}
+                              {!diffQrOk && <span className="ml-1 text-[10px]">{diffQr > 0 ? "💰" : "⚠️"}</span>}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className={`font-bold font-mono ${diffTransOk ? "text-emerald-600" : diffTrans > 0 ? "text-blue-600" : "text-red-600"}`}>
-                              {diffTrans >= 0 ? "+" : ""}{formatCurrency(Math.abs(diffTrans))}
+                              {diffTransOk ? "+Bs. 0,00" : `${diffTrans > 0 ? "+" : "-"}${formatCurrency(Math.abs(diffTrans))}`}
+                              {!diffTransOk && <span className="ml-1 text-[10px]">{diffTrans > 0 ? "💰" : "⚠️"}</span>}
                             </span>
                           </TableCell>
                           <TableCell className="text-right">

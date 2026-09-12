@@ -685,6 +685,15 @@ export const sellerCashRouter = router({
 
       const now = new Date();
       
+      // Recalcular montos y diferencias en tiempo real según gastos y ventas actualizados
+      const expectedCash = (cashRegister.initialCash ?? 0) 
+        + (cashRegister.salesCash ?? 0) 
+        - (cashRegister.partialDeliveriesCash ?? 0) 
+        - (cashRegister.totalExpenses ?? 0);
+      const diffCash = (cashRegister.reportedCash ?? 0) - expectedCash;
+      const diffQr = (cashRegister.reportedQr ?? 0) - (cashRegister.salesQr ?? 0);
+      const diffTransfer = (cashRegister.reportedTransfer ?? 0) - (cashRegister.salesTransfer ?? 0);
+
       await db
         .update(sellerCashRegisters)
         .set({
@@ -692,12 +701,14 @@ export const sellerCashRouter = router({
           closingApprovedBy: ctx.user.id,
           closingApprovedAt: now,
           closedAt: now,
+          differenceCash: diffCash,
+          differenceQr: diffQr,
+          differenceTransfer: diffTransfer,
           closingNotes: input.notes || null,
         })
         .where(eq(sellerCashRegisters.id, input.cashRegisterId));
       
       // Integración Financiera: Registrar cierre consolidado en cash_closures
-      const expectedCash = cashRegister.initialCash + cashRegister.salesCash - cashRegister.partialDeliveriesCash - cashRegister.totalExpenses;
       try {
         await db.insert(cashClosures).values({
           branchId: cashRegister.branchId,
@@ -729,9 +740,8 @@ export const sellerCashRouter = router({
             )
           );
 
-        // Registro de ajustes por diferencias en arqueo (Faltante o Sobrante de efectivo)
-        const diffCash = cashRegister.differenceCash || 0;
-        if (diffCash < 0) {
+        // Registro de ajustes por diferencias en arqueo (solo si hay diferencia real >= Bs. 1)
+        if (diffCash <= -100) {
           // Faltante en efectivo: registrar egreso por descuadre/ajuste
           await db.insert(financialTransactions).values({
             branchId: cashRegister.branchId,
@@ -744,7 +754,7 @@ export const sellerCashRouter = router({
             notes: `Faltante de caja vendedor #${cashRegister.sellerId} (Turno #${cashRegister.turnNumber}): ${cashRegister.differenceJustification || input.notes || "Sin justificación"}`,
             createdAt: now,
           });
-        } else if (diffCash > 0) {
+        } else if (diffCash >= 100) {
           // Sobrante en efectivo: registrar ingreso extraordinario
           await db.insert(financialTransactions).values({
             branchId: cashRegister.branchId,
