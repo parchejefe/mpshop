@@ -186,7 +186,7 @@ export default function CreateOrder() {
       `*Método:* ${formData.paymentMethod.toUpperCase()}\n\n` +
       `*Productos:*\n${itemsText}\n\n` +
       `*TOTAL:* ${formatCurrency(totalPrice)}\n\n` +
-      `_Vitalia - Operación Diaria_`;
+      `_MP Shop - Operación Diaria_`;
   };
 
   const copyToClipboard = () => {
@@ -227,7 +227,7 @@ export default function CreateOrder() {
           </Button>
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Crear Pedido</h1>
-            <p className="text-slate-500 font-medium">Registra una nueva entrega para Vitalia</p>
+            <p className="text-slate-500 font-medium">Registra una nueva entrega para MP Shop</p>
           </div>
         </div>
 

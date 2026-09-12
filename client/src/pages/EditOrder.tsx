@@ -166,7 +166,7 @@ export default function EditOrder() {
       `*Método:* ${formData.paymentMethod.toUpperCase()}\n\n` +
       `*Productos:*\n${itemsText}\n\n` +
       `*TOTAL:* ${formatCurrency(totalPrice)}\n\n` +
-      `_Vitalia - Operación Diaria_`;
+      `_MP Shop - Operación Diaria_`;
   };
 
   const copyToClipboard = () => {

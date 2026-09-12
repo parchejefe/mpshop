@@ -225,7 +225,7 @@ export default function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="subName">Subtítulo / Marca</Label>
-                  <Input id="subName" placeholder="Ej: VITALIA - CONTROL & VENTAS" {...field("subName")} />
+                  <Input id="subName" placeholder="Ej: MP SHOP - CONTROL & VENTAS" {...field("subName")} />
                   <p className="text-xs text-muted-foreground">Segunda línea de la cabecera de documentos.</p>
                 </div>
               </div>

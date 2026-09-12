@@ -61,13 +61,13 @@ export function CommercialCatalogModal({
   const { data: companySettings } = trpc.settings.getCompanyConfig.useQuery(undefined, { enabled: open });
 
   const company = {
-    name: "HK EQUIPOS TECNOLOGICOS",
-    subName: "VITALIA - CONTROL & VENTAS",
-    slogan: "Tecnologia que conecta contigo",
+    name: "MP SHOP TIENDA ONLINE",
+    subName: "MP SHOP - CONTROL & VENTAS",
+    slogan: "Tecnologia que conecta contigo · Equipos Garantizados",
     phone: "+591 70000000",
     whatsapp: "+591 70000000",
-    email: "ventas@vitaliapro.com",
-    address: "Centro Comercial Tecnologico, La Paz - Bolivia",
+    email: "ventas@mpshop.com",
+    address: "Ciudad satelite , Av escalon Aguero nro 300, El Alto La Paz, Bolivia",
     logo: null as string | null,
     warrantyBadge: "Garantia Real",
     shippingBadge: "Envios a todo Bolivia",

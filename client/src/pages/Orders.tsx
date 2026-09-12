@@ -262,7 +262,7 @@ export default function Orders() {
     }
     
     // El formato wa.me/+591... es aceptado y preferido por algunos navegadores
-    const url = `https://wa.me/+${formatted}?text=Hola!%20Te%20contactamos%20de%20Vitalia%20sobre%20tu%20pedido%20%23${orderNumber}`;
+    const url = `https://wa.me/+${formatted}?text=Hola!%20Te%20contactamos%20de%20MP%20Shop%20sobre%20tu%20pedido%20%23${orderNumber}`;
     window.open(url, "_blank");
   };
 
@@ -498,7 +498,7 @@ export default function Orders() {
                 </select>
               </div>
             </div>
-            <p className="text-slate-500 font-medium mt-1">Administra y monitorea todas las entregas de Vitalia</p>
+            <p className="text-slate-500 font-medium mt-1">Administra y monitorea todas las entregas de MP Shop</p>
           </div>
           <div className="flex items-center gap-3">
             {user?.role === "admin" && (

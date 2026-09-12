@@ -83,7 +83,7 @@ function generateTransferPDF(data: {
     @media print{body{padding:20px;}}
   </style></head><body>
   <div class="header">
-    <div><div class="company">Vitalia Pedidos</div><div class="doc-type">Formulario de Traspaso de Inventario</div></div>
+    <div><div class="company">MP Shop Pedidos</div><div class="doc-type">Formulario de Traspaso de Inventario</div></div>
     <div class="badge">${transferNumber}</div>
   </div>
   <div class="info-grid">
@@ -108,7 +108,7 @@ function generateTransferPDF(data: {
     <div><div class="sig-line">Entrega Conforme<br/><strong>${sourceBranchName}</strong></div></div>
     <div><div class="sig-line">Recibe Conforme<br/><strong>${destBranchName}</strong></div></div>
   </div>
-  <div class="footer">Vitalia Pedidos · ${date} · ${transferNumber}</div>
+  <div class="footer">MP Shop Pedidos · ${date} · ${transferNumber}</div>
   </body></html>`;
 
   const win = window.open("", "_blank", "width=850,height=1100");
@@ -193,7 +193,7 @@ export function TransferToBranchDialog({
     const now = new Date();
     const dateStr = now.toLocaleDateString("es-BO", { year: "numeric", month: "long", day: "numeric" });
     const timeStr = now.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit" });
-    const message = `*VITALIA PEDIDOS - NUEVO TRASPASO*\n📦 Traspaso #${successData.transferNumber}\n🏢 Destino: ${successData.destBranchName}\n📅 Fecha: ${dateStr}\n🕐 Hora: ${timeStr}\n\n*Detalle de Productos:*\n${itemsText}\n\n_Enviado desde el Sistema Central_`;
+    const message = `*MP SHOP PEDIDOS - NUEVO TRASPASO*\n📦 Traspaso #${successData.transferNumber}\n🏢 Destino: ${successData.destBranchName}\n📅 Fecha: ${dateStr}\n🕐 Hora: ${timeStr}\n\n*Detalle de Productos:*\n${itemsText}\n\n_Enviado desde el Sistema Central_`;
     
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${phone}?text=${encodedMessage}`, '_blank');

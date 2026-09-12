@@ -33,7 +33,7 @@ export function RepurchaseSuggestions() {
   }
 
   const handleWhatsApp = (s: any) => {
-    const message = `Hola ${s.customerName}, te escribimos de Vitalia. 🌿 Notamos que ya pasaron ${s.daysSinceLastOrder} días desde tu última compra. ¿Te gustaría que te agendemos un pedido para mañana? ¡Quedamos atentos! 😊`;
+    const message = `Hola ${s.customerName}, te escribimos de MP Shop. 💻 Notamos que ya pasaron ${s.daysSinceLastOrder} días desde tu última compra. ¿Te gustaría consultar por nuevos equipos o accesorios? ¡Quedamos atentos! 😊`;
     const encodedMessage = encodeURIComponent(message);
     const phone = s.customerWhatsapp || s.customerPhone;
     if (!phone) return;

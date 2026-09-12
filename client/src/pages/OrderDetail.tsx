@@ -358,7 +358,7 @@ export default function OrderDetail() {
                           toast.error("El cliente no tiene un número válido");
                           return;
                         }
-                        window.open(`https://wa.me/+${tel}?text=Hola!%20Te%20contactamos%20de%20Vitalia%20por%20tu%20pedido%20%23${order.orderNumber}`, "_blank");
+                        window.open(`https://wa.me/+${tel}?text=Hola!%20Te%20contactamos%20de%20MP%20Shop%20por%20tu%20pedido%20%23${order.orderNumber}`, "_blank");
                       }}
                     >
                       <MessageCircle className="h-5 w-5" />
@@ -427,7 +427,7 @@ export default function OrderDetail() {
                     toast.error("El cliente no tiene un número válido");
                     return;
                   }
-                  window.open(`https://wa.me/+${tel}?text=Hola!%20Te%20contactamos%20de%20Vitalia%20por%20tu%20pedido%20%23${order.orderNumber}`, "_blank");
+                  window.open(`https://wa.me/+${tel}?text=Hola!%20Te%20contactamos%20de%20MP%20Shop%20por%20tu%20pedido%20%23${order.orderNumber}`, "_blank");
                 }}
               >
                 <MessageCircle className="h-4 w-4" />

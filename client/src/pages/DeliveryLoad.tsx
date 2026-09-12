@@ -427,7 +427,7 @@ export default function DeliveryLoad() {
                                      if (cleaned.length === 8) formatted = "591" + cleaned;
                                      else if (cleaned.startsWith("0") && cleaned.length === 9) formatted = "591" + cleaned.slice(1);
                                      else if (cleaned.length > 8 && !cleaned.startsWith("591")) formatted = "591" + cleaned;
-                                     window.open(`https://wa.me/+${formatted}?text=Hola!%20Te%20contactamos%20de%20Vitalia%20sobre%20tu%20pedido%20%23${order.orderNumber}`, "_blank");
+                                     window.open(`https://wa.me/+${formatted}?text=Hola!%20Te%20contactamos%20de%20MP%20Shop%20sobre%20tu%20pedido%20%23${order.orderNumber}`, "_blank");
                                   }}
                                 >
                                   <MessageCircle className="h-3 w-3" />

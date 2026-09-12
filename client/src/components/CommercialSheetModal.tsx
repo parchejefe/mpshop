@@ -51,14 +51,14 @@ export function CommercialSheetModal({
   const unit = sheetData?.unit;
   // Merge: sheetData.company como base, companySettings tiene prioridad (logo, city, taxId, etc.)
   const company = {
-    name: "HK EQUIPOS TECNOLÓGICOS",
-    subName: "VITALIA - CONTROL & VENTAS",
+    name: "MP SHOP TIENDA ONLINE",
+    subName: "MP SHOP - CONTROL & VENTAS",
     slogan: "Tecnología que conecta contigo · Equipos Garantizados",
     phone: "+591 70000000",
     whatsapp: "+591 70000000",
-    email: "ventas@vitaliapro.com",
-    address: "Centro Comercial Tecnológico, La Paz - Bolivia",
-    city: "La Paz, Bolivia",
+    email: "ventas@mpshop.com",
+    address: "Ciudad satelite , Av escalon Aguero nro 300, El Alto La Paz, Bolivia",
+    city: "El Alto La Paz, Bolivia",
     taxId: "",
     logo: null as string | null,
     tiktokUrl: "",

@@ -73,14 +73,14 @@ export function WorkOrderModal({
   const customer = orderData?.customer;
   const warranty = orderData?.warranty;
   const company = {
-    name: "HK EQUIPOS TECNOLÓGICOS",
-    subName: "VITALIA - SERVICIO TÉCNICO ESPECIALIZADO",
+    name: "MP SHOP TIENDA ONLINE",
+    subName: "MP SHOP - SERVICIO TÉCNICO ESPECIALIZADO",
     slogan: "Tecnología que conecta contigo · Soporte Especializado",
     phone: "+591 70000000",
     whatsapp: "+591 70000000",
-    email: "taller@vitaliapro.com",
-    address: "Centro Comercial Tecnológico, La Paz - Bolivia",
-    city: "La Paz, Bolivia",
+    email: "taller@mpshop.com",
+    address: "Ciudad satelite , Av escalon Aguero nro 300, El Alto La Paz, Bolivia",
+    city: "El Alto La Paz, Bolivia",
     taxId: "1234567890",
     logo: null as string | null,
     receiptFooterNotes: "El cliente declara que el equipo ingresa en las condiciones detalladas y acepta las políticas del taller.",
