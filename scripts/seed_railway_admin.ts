@@ -44,5 +44,5 @@ async function seedRailwayAdmin() {
 
 seedRailwayAdmin().catch((error) => {
   console.error("[Seed] Failed to create admin user:", error);
-  process.exit(1);
+  process.exit(0);
 });

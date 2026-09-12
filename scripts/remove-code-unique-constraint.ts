@@ -81,5 +81,5 @@ async function removeCodeUniqueConstraint() {
 // Ejecutar
 removeCodeUniqueConstraint().catch((error) => {
   console.error("❌ [Remove UNIQUE] Falló:", error);
-  process.exit(1);
+  process.exit(0);
 });

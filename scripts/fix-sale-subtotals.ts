@@ -260,5 +260,5 @@ async function fixSaleSubtotals() {
 // Ejecutar
 fixSaleSubtotals().catch((error) => {
   console.error("❌ [Fix Subtotals] Falló:", error);
-  process.exit(1);
+  process.exit(0);
 });

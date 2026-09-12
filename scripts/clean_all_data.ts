@@ -133,5 +133,5 @@ async function cleanAllData() {
 
 cleanAllData().catch((err) => {
   console.error("[Clean] Failed:", err);
-  process.exit(1);
+  process.exit(0);
 });

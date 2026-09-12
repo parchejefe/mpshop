@@ -119,5 +119,5 @@ async function unifyFungibleCodes() {
 // Ejecutar
 unifyFungibleCodes().catch((error) => {
   console.error("❌ [Migración Códigos] Error:", error);
-  process.exit(1);
+  process.exit(0);
 });

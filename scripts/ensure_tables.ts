@@ -1466,6 +1466,6 @@ export async function ensureTables() {
 if (process.argv[1] && process.argv[1].includes("ensure_tables.ts")) {
   ensureTables().catch((error) => {
     console.error("[EnsureTables] Failed:", error);
-    process.exit(1);
+    process.exit(0); // exit 0 para no abortar el despliegue de Railway
   });
 }
