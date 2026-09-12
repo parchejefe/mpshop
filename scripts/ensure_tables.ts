@@ -284,6 +284,8 @@ export async function ensureTables() {
         phone varchar(20),
         taxId varchar(50),
         address text,
+        creditDays int NOT NULL DEFAULT 30,
+        creditLimit int NOT NULL DEFAULT 0,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         CONSTRAINT suppliers_id PRIMARY KEY(id)

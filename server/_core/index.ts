@@ -459,9 +459,27 @@ async function startServer() {
         : "missing",
       initError: getDbInitError(),
       sellerCashTable,
-      sellerColumns,
-      version: "v1.5.1-cash-fix"
+      version: "v1.5.2-schema-sync"
     });
+  });
+
+  app.get("/api/admin/sync-schema", async (_req, res) => {
+    try {
+      const mysql = await import("mysql2/promise");
+      if (!process.env.DATABASE_URL) {
+        return res.status(400).json({ error: "DATABASE_URL not configured" });
+      }
+      const conn = await mysql.default.createConnection(process.env.DATABASE_URL);
+      const { syncDatabaseSchema } = await import("../ensure_schema_sync");
+      const result = await syncDatabaseSchema(conn);
+      await conn.end();
+      res.json({
+        success: true,
+        ...result,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Debug endpoint for order items table structure

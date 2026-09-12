@@ -820,6 +820,11 @@ export async function getDb() {
             lastUpdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
           )
         `).catch(console.error);
+
+        // Sincronización completa y exhaustiva de todas las tablas y columnas de Drizzle
+        import("./ensure_schema_sync")
+          .then((m) => m.syncDatabaseSchema(_pool))
+          .catch((err) => console.error("[Database] Schema sync error:", err));
       }
     } catch (error) {
       _dbInitError = error instanceof Error ? error.message : String(error);

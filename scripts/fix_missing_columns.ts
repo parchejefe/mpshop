@@ -502,6 +502,13 @@ async function main() {
     `);
     console.log("[FixColumns] ✓ Migrated repair rmaNumber to otNumber");
 
+    try {
+      const { syncDatabaseSchema } = await import("../server/ensure_schema_sync");
+      await syncDatabaseSchema(conn);
+    } catch (syncErr: any) {
+      console.warn("[FixColumns] Schema sync note:", syncErr.message);
+    }
+
     console.log("[FixColumns] ✅ All columns and tables verified!");
 
   } finally {
