@@ -1,9 +1,8 @@
 import "dotenv/config";
 import mysql from "mysql2/promise";
 
-const databaseUrl = process.env.DATABASE_URL;
-
 export async function ensureTables() {
+  const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is required");
   }
@@ -1300,6 +1299,7 @@ export async function ensureTables() {
         sellerId INT NOT NULL,
         branchId INT NOT NULL,
         date VARCHAR(10) NOT NULL,
+        turnNumber INT NOT NULL DEFAULT 1,
         openingStatus ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
         initialCash INT NOT NULL DEFAULT 0,
         openedAt TIMESTAMP NULL,
@@ -1316,6 +1316,8 @@ export async function ensureTables() {
         reportedQr INT DEFAULT 0,
         reportedTransfer INT DEFAULT 0,
         differenceCash INT DEFAULT 0,
+        differenceQr INT NOT NULL DEFAULT 0,
+        differenceTransfer INT NOT NULL DEFAULT 0,
         differenceJustification TEXT NULL,
         closedAt TIMESTAMP NULL,
         closingApprovedBy INT NULL,
