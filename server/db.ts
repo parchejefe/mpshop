@@ -1010,7 +1010,30 @@ export async function deleteUser(id: number) {
     return;
   }
   
-  await db.delete(users).where(eq(users.id, id));
+  // Desactivar temporalmente revisión de claves foráneas para permitir eliminación en cascada limpia
+  try {
+    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0;`);
+    
+    // 1. Limpiar sesiones y asignaciones a sucursales
+    await db.execute(sql`DELETE FROM sessions WHERE userId = ${id};`);
+    await db.execute(sql`DELETE FROM userBranches WHERE userId = ${id};`);
+    
+    // 2. Limpiar registros de cajas de vendedores si existen
+    await db.execute(sql`DELETE FROM seller_cash_expenses WHERE sellerId = ${id};`);
+    await db.execute(sql`DELETE FROM seller_partial_deliveries WHERE sellerId = ${id};`);
+    await db.execute(sql`DELETE FROM seller_cash_registers WHERE sellerId = ${id};`);
+    await db.execute(sql`DELETE FROM cash_closures WHERE userId = ${id};`);
+    await db.execute(sql`DELETE FROM cash_openings WHERE responsibleUserId = ${id} OR openedByUserId = ${id};`);
+    
+    // 3. Limpiar logs y tracking
+    await db.execute(sql`DELETE FROM auditLog WHERE userId = ${id};`);
+    await db.execute(sql`DELETE FROM gpsTracking WHERE userId = ${id};`);
+    
+    // 4. Eliminar el usuario
+    await db.delete(users).where(eq(users.id, id));
+  } finally {
+    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1;`);
+  }
 }
 
 export async function getUserById(id: number) {
