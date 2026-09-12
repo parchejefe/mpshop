@@ -77,7 +77,7 @@ export default function SellerBoxesManagement() {
 
   const { data: allExpenses } = trpc.sellerCash.admin_listAllExpenses.useQuery({ date: filterDate });
 
-  const { data: sellers } = trpc.sellerCash.admin_listSellers.useQuery();
+  const { data: sellers, refetch: refetchSellers } = trpc.sellerCash.admin_listSellers.useQuery();
 
   const invalidateAll = () => {
     utils.sellerCash.admin_getPendingRequests.invalidate();
@@ -221,7 +221,7 @@ export default function SellerBoxesManagement() {
           />
           <Button
             className="bg-emerald-600 hover:bg-emerald-700 font-bold gap-2"
-            onClick={() => setOpenBoxDialog(true)}
+            onClick={() => { refetchSellers(); setOpenBoxDialog(true); }}
           >
             <Wallet className="w-4 h-4" /> Abrir Caja a Vendedor
           </Button>
@@ -1035,7 +1035,9 @@ export default function SellerBoxesManagement() {
               >
                 <option value="">— Selecciona un vendedor —</option>
                 {(sellers ?? []).map((s: any) => (
-                  <option key={s.id} value={s.id}>{s.name} (@{s.username})</option>
+                  <option key={s.id} value={s.id}>
+                    {s.name || s.username} (@{s.username}) {s.role ? `[${s.role === 'seller' ? 'Vendedor' : s.role === 'cashier' ? 'Cajero' : s.role === 'user' ? 'Repartidor' : s.role === 'admin' ? 'Administrador' : s.role}]` : ""}
+                  </option>
                 ))}
               </select>
             </div>

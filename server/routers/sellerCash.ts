@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { getDb } from "../db";
+import { getDb, getAllUsers } from "../db";
 import { toPlainObject } from "../_core/serialize";
 import { 
   sellerCashRegisters, 
@@ -989,19 +989,43 @@ export const sellerCashRouter = router({
    * Obtener lista de vendedores (para el selector del admin)
    */
   admin_listSellers: protectedProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-
     if (ctx.user?.role !== "admin") {
-      throw new TRPCError({ code: "FORBIDDEN" });
+      throw new TRPCError({ code: "FORBIDDEN", message: "Solo administradores pueden listar vendedores" });
     }
 
-    const sellers = await db
-      .select({ id: users.id, name: users.name, username: users.username })
-      .from(users)
-      .where(eq(users.role, "seller"));
+    try {
+      const allUsers = (await getAllUsers()) as any[];
+      
+      // Filtrar usuarios activos (o sin status explícito)
+      const activeUsers = (allUsers || []).filter((u: any) => u.status !== "inactive");
 
-    return toPlainObject(sellers);
+      // Buscar vendedores, cajeros y repartidores
+      let sellers = activeUsers.filter((u: any) => 
+        u.role === "seller" || u.role === "cashier" || u.role === "user"
+      );
+
+      // Si no hay usuarios con esos roles específicos, incluir a todos los que no sean admin
+      if (sellers.length === 0) {
+        sellers = activeUsers.filter((u: any) => u.role !== "admin");
+      }
+
+      // Si aún no hay nadie (p.ej. solo existe el admin en pruebas), incluir a todos
+      if (sellers.length === 0) {
+        sellers = activeUsers;
+      }
+
+      return toPlainObject(
+        sellers.map((s: any) => ({
+          id: s.id,
+          name: s.name || s.username,
+          username: s.username,
+          role: s.role,
+        }))
+      );
+    } catch (err: any) {
+      console.error("[admin_listSellers] Error:", err);
+      return [];
+    }
   }),
 
   // ═══════════════════════════════════════════════════════════════
