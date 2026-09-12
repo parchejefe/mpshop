@@ -62,8 +62,24 @@ export const sellerCashRouter = router({
       return { hasBox: false, box: null };
     }
     
-    // Calcular totales esperados
-    const expectedCash = activeCashRegister.initialCash + activeCashRegister.salesCash - activeCashRegister.partialDeliveriesCash - activeCashRegister.totalExpenses;
+    // Obtener gastos pendientes de esta caja
+    const pendingExpenses = await db
+      .select()
+      .from(sellerCashExpenses)
+      .where(
+        and(
+          eq(sellerCashExpenses.cashRegisterId, activeCashRegister.id),
+          eq(sellerCashExpenses.status, "pending")
+        )
+      );
+    const pendingExpensesTotal = pendingExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    // Calcular totales esperados (restando gastos aprobados Y gastos pendientes ya desembolsados)
+    const expectedCash = activeCashRegister.initialCash 
+      + activeCashRegister.salesCash 
+      - activeCashRegister.partialDeliveriesCash 
+      - activeCashRegister.totalExpenses
+      - pendingExpensesTotal;
     const expectedQr = activeCashRegister.salesQr;
     const expectedTransfer = activeCashRegister.salesTransfer;
     
@@ -71,6 +87,7 @@ export const sellerCashRouter = router({
       hasBox: true,
       box: {
         ...activeCashRegister,
+        pendingExpensesTotal,
         expectedCash,
         expectedQr,
         expectedTransfer,
@@ -317,11 +334,24 @@ export const sellerCashRouter = router({
       // CÁLCULO AUTOMÁTICO DE DIFERENCIAS (CRÍTICO #1 - AUDITORÍA)
       // ═══════════════════════════════════════════════════════════════
       
-      // Efectivo esperado en sistema
+      // Obtener gastos pendientes de esta caja para deducirlos del efectivo esperado
+      const pendingExpenses = await db
+        .select()
+        .from(sellerCashExpenses)
+        .where(
+          and(
+            eq(sellerCashExpenses.cashRegisterId, cashRegister.id),
+            eq(sellerCashExpenses.status, "pending")
+          )
+        );
+      const pendingExpensesTotal = pendingExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+      // Efectivo esperado en sistema (considerando gastos pendientes ya desembolsados por el vendedor)
       const expectedCash = cashRegister.initialCash 
         + cashRegister.salesCash 
         - cashRegister.partialDeliveriesCash 
-        - cashRegister.totalExpenses;
+        - cashRegister.totalExpenses
+        - pendingExpensesTotal;
       
       // QR esperado (solo ventas, sin deducciones)
       const expectedQr = cashRegister.salesQr;
@@ -559,9 +589,25 @@ export const sellerCashRouter = router({
         .where(eq(sellerCashExpenses.status, "pending")),
     ]);
     
+    // Enriquecer cada cierre pendiente con los gastos pendientes asociados a su caja
+    const pendingClosingsWithExpenses = pendingClosings.map((item) => {
+      const boxExpenses = pendingExpenses.filter(
+        (pe: any) => pe.expense.cashRegisterId === item.cashRegister.id
+      );
+      const pendingExpensesTotal = boxExpenses.reduce(
+        (sum: number, pe: any) => sum + (pe.expense.amount || 0),
+        0
+      );
+      return {
+        ...item,
+        pendingExpenses: boxExpenses.map((pe: any) => pe.expense),
+        pendingExpensesTotal,
+      };
+    });
+    
     return toPlainObject({
       pendingOpenings,
-      pendingClosings,
+      pendingClosings: pendingClosingsWithExpenses,
       pendingDeliveries,
       pendingExpenses,
       totalPending: pendingOpenings.length + pendingClosings.length + pendingDeliveries.length + pendingExpenses.length,
@@ -685,11 +731,55 @@ export const sellerCashRouter = router({
 
       const now = new Date();
       
-      // Recalcular montos y diferencias en tiempo real según gastos y ventas actualizados
+      // Auto-aprobar gastos pendientes de esta caja al aprobar el cierre
+      const pendingExpenses = await db
+        .select()
+        .from(sellerCashExpenses)
+        .where(
+          and(
+            eq(sellerCashExpenses.cashRegisterId, cashRegister.id),
+            eq(sellerCashExpenses.status, "pending")
+          )
+        );
+
+      let additionalExpenses = 0;
+      for (const exp of pendingExpenses) {
+        additionalExpenses += exp.amount;
+        await db
+          .update(sellerCashExpenses)
+          .set({
+            status: "approved",
+            approvedBy: ctx.user.id,
+            approvedAt: now,
+            adminNotes: input.notes || "Aprobado automáticamente al consolidar el cierre de caja",
+          })
+          .where(eq(sellerCashExpenses.id, exp.id));
+
+        // Registrar en Gastos Operacionales (P&L empresarial)
+        await db.insert(operationalExpenses).values({
+          branchId: cashRegister.branchId,
+          description: `Gasto vendedor: ${exp.concept}`,
+          category: "other",
+          costType: "operational_expense",
+          referenceType: "seller_cash_expense",
+          referenceId: exp.id,
+          isAutomatic: 1,
+          amount: exp.amount,
+          paymentMethod: "cash",
+          status: "paid",
+          userId: exp.sellerId,
+          notes: exp.notes || "Gasto de vendedor liquidado al cierre",
+          expenseDate: now,
+        });
+      }
+
+      const finalTotalExpenses = (cashRegister.totalExpenses ?? 0) + additionalExpenses;
+
+      // Recalcular montos y diferencias en tiempo real según todos los gastos (aprobados y liquidados)
       const expectedCash = (cashRegister.initialCash ?? 0) 
         + (cashRegister.salesCash ?? 0) 
         - (cashRegister.partialDeliveriesCash ?? 0) 
-        - (cashRegister.totalExpenses ?? 0);
+        - finalTotalExpenses;
       const diffCash = (cashRegister.reportedCash ?? 0) - expectedCash;
       const diffQr = (cashRegister.reportedQr ?? 0) - (cashRegister.salesQr ?? 0);
       const diffTransfer = (cashRegister.reportedTransfer ?? 0) - (cashRegister.salesTransfer ?? 0);
@@ -697,6 +787,7 @@ export const sellerCashRouter = router({
       await db
         .update(sellerCashRegisters)
         .set({
+          totalExpenses: finalTotalExpenses,
           closingStatus: "approved",
           closingApprovedBy: ctx.user.id,
           closingApprovedAt: now,
@@ -864,7 +955,10 @@ export const sellerCashRouter = router({
           WHERE id=${expense.cashRegisterId}
         `);
 
-        // Registrar en Gastos Operacionales (para P&L y reportes)
+        // Registrar en Gastos Operacionales (para P&L y reportes de rentabilidad)
+        // NOTA: No se inserta en financialTransactions de Caja Central porque el dinero ya salió
+        // de la Caja Central al entregar el fondo inicial al vendedor (o de sus ventas en mano).
+        // El retorno neto en el cierre ya descuenta este gasto automáticamente.
         await tx.insert(operationalExpenses).values({
           branchId,
           description: `Gasto vendedor: ${expense.concept}`,
@@ -880,22 +974,9 @@ export const sellerCashRouter = router({
           notes: input.notes || expense.notes || null,
           expenseDate: now,
         });
-
-        // Registrar egreso en Transacciones Financieras (Libro Diario)
-        await tx.insert(financialTransactions).values({
-          branchId,
-          type: "expense",
-          category: "seller_expense",
-          paymentMethod: "cash",
-          amount: expense.amount,
-          userId: expense.sellerId,
-          referenceId: expense.id,
-          notes: `Gasto aprobado caja vendedor #${expense.cashRegisterId}: ${expense.concept}`,
-          createdAt: now,
-        });
       });
 
-      return { success: true, message: "Gasto aprobado y registrado en finanzas" };
+      return { success: true, message: "Gasto aprobado y registrado en gastos operacionales" };
     }),
 
   admin_rejectExpense: protectedProcedure
@@ -914,7 +995,7 @@ export const sellerCashRouter = router({
       const now = new Date();
 
       await db.transaction(async (tx: any) => {
-        // Si estaba aprobado, revertir de caja, operationalExpenses y financialTransactions
+        // Si estaba aprobado, revertir de caja y operationalExpenses
         if (expense.status === "approved") {
           await tx.execute(sql`
             UPDATE seller_cash_registers

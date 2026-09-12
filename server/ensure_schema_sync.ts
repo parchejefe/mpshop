@@ -186,15 +186,21 @@ export async function syncDatabaseSchema(poolOrConn: any): Promise<{
           )
       `);
 
-      // 4. Limpiar cierres duplicados erróneos en cash_closures generados para cajas de vendedores
+      // 4. Limpiar cierres duplicados y egresos erróneos generados para cajas de vendedores
       await poolOrConn.query(`
         DELETE FROM cash_closures WHERE adminNotes LIKE '%caja vendedor%';
       `);
       await poolOrConn.query(`
         DELETE FROM financialTransactions WHERE category = 'caja_vendedor_devolucion_fondo';
       `);
+      await poolOrConn.query(`
+        DELETE FROM financialTransactions WHERE category = 'seller_expense';
+      `);
+      await poolOrConn.query(`
+        DELETE FROM financialTransactions WHERE category = 'seller_shortfall_penalty';
+      `);
 
-      console.log("[SchemaSync] ✓ Base seeds ensured (Branch 1, Proveedor Genérico, Fondos de Caja Vendedor, Limpieza Cierres)");
+      console.log("[SchemaSync] ✓ Base seeds ensured (Branch 1, Proveedor Genérico, Fondos de Caja Vendedor, Limpieza Cierres y Egresos Duplicados)");
     } catch (seedErr: any) {
       console.warn("[SchemaSync] Note on base seeds:", seedErr.message);
     }

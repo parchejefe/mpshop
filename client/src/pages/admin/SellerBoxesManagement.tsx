@@ -393,8 +393,17 @@ export default function SellerBoxesManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pending!.pendingClosings.map(({ cashRegister: cr, seller }) => {
-                      const sysCash   = (cr.initialCash ?? 0) + (cr.salesCash ?? 0) - (cr.partialDeliveriesCash ?? 0) - (cr.totalExpenses ?? 0);
+                    {pending!.pendingClosings.map((closingItem: any) => {
+                      const cr = closingItem.cashRegister;
+                      const seller = closingItem.seller;
+                      const pendingExpensesTotal = closingItem.pendingExpensesTotal || 0;
+                      
+                      // Efectivo esperado en sistema considerando gastos pendientes ya desembolsados
+                      const sysCash   = (cr.initialCash ?? 0) 
+                        + (cr.salesCash ?? 0) 
+                        - (cr.partialDeliveriesCash ?? 0) 
+                        - (cr.totalExpenses ?? 0)
+                        - pendingExpensesTotal;
                       const sysQr     = cr.salesQr ?? 0;
                       const sysTrans  = cr.salesTransfer ?? 0;
                       
@@ -410,10 +419,17 @@ export default function SellerBoxesManagement() {
                       return (
                         <TableRow key={cr.id}>
                           <TableCell className="font-bold">{seller?.name ?? "—"}</TableCell>
-                          <TableCell className="font-mono">{formatCurrency(cr.reportedCash ?? 0)}</TableCell>
+                          <TableCell className="font-mono font-bold text-slate-900">{formatCurrency(cr.reportedCash ?? 0)}</TableCell>
                           <TableCell className="font-mono">{formatCurrency(cr.reportedQr ?? 0)}</TableCell>
                           <TableCell className="font-mono">{formatCurrency(cr.reportedTransfer ?? 0)}</TableCell>
-                          <TableCell className="font-mono text-slate-500">{formatCurrency(sysCash)}</TableCell>
+                          <TableCell className="font-mono">
+                            <span className="font-bold text-slate-700">{formatCurrency(sysCash)}</span>
+                            {pendingExpensesTotal > 0 && (
+                              <div className="text-[10px] text-amber-600 font-medium whitespace-nowrap">
+                                (deducido {formatCurrency(pendingExpensesTotal)} en gastos)
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <span className={`font-bold font-mono ${diffCashOk ? "text-emerald-600" : diffCash > 0 ? "text-blue-600" : "text-red-600"}`}>
                               {diffCashOk ? "+Bs. 0,00" : `${diffCash > 0 ? "+" : "-"}${formatCurrency(Math.abs(diffCash))}`}
@@ -821,6 +837,24 @@ export default function SellerBoxesManagement() {
               ¿Aprobar la solicitud de <strong>{approveDialog?.sellerName}</strong>?
             </DialogDescription>
           </DialogHeader>
+
+          {approveDialog?.type === "closing" && (() => {
+            const closingItem = pending?.pendingClosings?.find((c: any) => c.cashRegister.id === approveDialog.id);
+            const pTotal = (closingItem as any)?.pendingExpensesTotal || 0;
+            if (pTotal <= 0) return null;
+            return (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-blue-700">
+                  <Receipt className="w-4 h-4" />
+                  Gastos pendientes asociados: {formatCurrency(pTotal)}
+                </div>
+                <p className="text-slate-600">
+                  Al aprobar este cierre, se aprobarán e integrarán automáticamente los gastos pendientes de esta caja (ej. gasolina), cuadrando el balance financiero sin generar faltantes indebidos.
+                </p>
+              </div>
+            );
+          })()}
+
           <div className="space-y-3">
             <Label>Notas (opcional)</Label>
             <Textarea

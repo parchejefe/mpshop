@@ -611,12 +611,16 @@ export default function SellerCashRegister() {
     .filter((e: any) => e.status === "approved")
     .reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
 
-  // El efectivo en caja = inicial + ventas efectivo - entregas aprobadas - gastos aprobados
-  // El backend ya guarda partialDeliveriesCash y totalExpenses acumulados
+  const totalPendingExpenses = expenses
+    .filter((e: any) => e.status === "pending")
+    .reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
+
+  // El efectivo en caja = inicial + ventas efectivo - entregas aprobadas - gastos aprobados - gastos pendientes ya desembolsados
   const cashInBox = (currentBox?.initialCash || 0)
     + (currentBox?.salesCash || 0)
     - (currentBox?.partialDeliveriesCash || 0)
-    - (currentBox?.totalExpenses || 0);
+    - (currentBox?.totalExpenses || 0)
+    - totalPendingExpenses;
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 mb-20 md:mb-10">
@@ -974,7 +978,14 @@ export default function SellerCashRegister() {
                         required
                       />
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">Sistema: {formatCurrency(cashInBox)}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Sistema: {formatCurrency(cashInBox)}
+                      {totalPendingExpenses > 0 && (
+                        <span className="text-amber-600 font-medium ml-1">
+                          (deducido {formatCurrency(totalPendingExpenses)} en gastos)
+                        </span>
+                      )}
+                    </p>
                   </div>
 
                   <div>
