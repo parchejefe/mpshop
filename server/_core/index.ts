@@ -599,6 +599,16 @@ async function startServer() {
         "cashOpenings",
         "payments",
 
+        // Cajas de vendedores
+        "seller_cash_expenses",
+        "sellerCashExpenses",
+        "seller_partial_deliveries",
+        "sellerPartialDeliveries",
+        "seller_cash_registers",
+        "sellerCashRegisters",
+        "cash_count_history",
+        "cashCountHistory",
+
         // Ventas y cotizaciones
         "saleItems",
         "sale_items",
@@ -656,6 +666,14 @@ async function startServer() {
         }
       }
       await connection.query("SET FOREIGN_KEY_CHECKS = 1");
+
+      // Re-asegurar semillas básicas (Sucursal 1, Proveedor Genérico, estructura limpia)
+      try {
+        const { syncDatabaseSchema } = await import("../ensure_schema_sync");
+        await syncDatabaseSchema(connection);
+      } catch (syncErr: any) {
+        console.warn("[Reset] Could not re-sync schema seeds:", syncErr.message);
+      }
 
       // Repoblar catálogos de laptops y specs para pruebas limpias
       try {
