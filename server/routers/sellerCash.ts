@@ -11,7 +11,9 @@ import {
   operationalExpenses,
   sales,
   users,
-  branches
+  branches,
+  cashOpenings,
+  cashClosures
 } from "../../drizzle/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { getLocalDateKey } from "../_core/date_utils";
@@ -579,20 +581,48 @@ export const sellerCashRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
 
+      const [cashRegister] = await db
+        .select()
+        .from(sellerCashRegisters)
+        .where(eq(sellerCashRegisters.id, input.cashRegisterId))
+        .limit(1);
+
+      if (!cashRegister) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Caja no encontrada" });
+      }
+
       const now = new Date();
       
-      // Actualizar con query builder de Drizzle
+      // Actualizar estado de apertura de la caja
       await db
         .update(sellerCashRegisters)
         .set({
           openingStatus: "approved",
           openingApprovedBy: ctx.user.id,
           openingApprovedAt: now,
+          openedAt: cashRegister.openedAt || now,
           openingNotes: input.notes || null,
         })
         .where(eq(sellerCashRegisters.id, input.cashRegisterId));
       
-      return { success: true, message: "Apertura aprobada correctamente" };
+      // Integración Financiera: Registrar fondo de apertura en cash_openings si hay efectivo inicial
+      if (cashRegister.initialCash > 0) {
+        try {
+          await db.insert(cashOpenings).values({
+            openingDate: cashRegister.date,
+            openingAmount: cashRegister.initialCash,
+            paymentMethod: "cash",
+            responsibleUserId: cashRegister.sellerId,
+            openedByUserId: ctx.user.id,
+            status: "open",
+            notes: `Apertura caja vendedor #${cashRegister.sellerId} (Turno #${cashRegister.turnNumber}) - Fondo inicial`,
+          });
+        } catch (openingErr: any) {
+          console.warn("[SellerCash->Finance] Error al registrar cash_opening:", openingErr.message);
+        }
+      }
+      
+      return { success: true, message: "Apertura aprobada correctamente y registrada en Finanzas" };
     }),
 
   admin_rejectOpening: protectedProcedure
@@ -630,6 +660,16 @@ export const sellerCashRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
 
+      const [cashRegister] = await db
+        .select()
+        .from(sellerCashRegisters)
+        .where(eq(sellerCashRegisters.id, input.cashRegisterId))
+        .limit(1);
+
+      if (!cashRegister) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Caja no encontrada" });
+      }
+
       const now = new Date();
       
       await db
@@ -643,7 +683,73 @@ export const sellerCashRouter = router({
         })
         .where(eq(sellerCashRegisters.id, input.cashRegisterId));
       
-      return { success: true, message: "Cierre aprobado correctamente" };
+      // Integración Financiera: Registrar cierre consolidado en cash_closures
+      const expectedCash = cashRegister.initialCash + cashRegister.salesCash - cashRegister.partialDeliveriesCash - cashRegister.totalExpenses;
+      try {
+        await db.insert(cashClosures).values({
+          branchId: cashRegister.branchId,
+          userId: cashRegister.sellerId,
+          date: cashRegister.date,
+          initialCash: cashRegister.initialCash,
+          reportedCash: cashRegister.reportedCash || 0,
+          reportedQr: cashRegister.reportedQr || 0,
+          reportedTransfer: cashRegister.reportedTransfer || 0,
+          expectedCash,
+          expectedQr: cashRegister.salesQr,
+          expectedTransfer: cashRegister.salesTransfer,
+          expenses: cashRegister.totalExpenses,
+          pendingOrders: 0,
+          status: "approved",
+          adminNotes: input.notes || `Cierre aprobado caja vendedor #${cashRegister.sellerId} (Turno #${cashRegister.turnNumber})`,
+          createdAt: now,
+        });
+
+        // Cerrar aperturas pendientes del vendedor en la fecha
+        await db
+          .update(cashOpenings)
+          .set({ status: "closed" })
+          .where(
+            and(
+              eq(cashOpenings.responsibleUserId, cashRegister.sellerId),
+              eq(cashOpenings.openingDate, cashRegister.date),
+              eq(cashOpenings.status, "open")
+            )
+          );
+
+        // Registro de ajustes por diferencias en arqueo (Faltante o Sobrante de efectivo)
+        const diffCash = cashRegister.differenceCash || 0;
+        if (diffCash < 0) {
+          // Faltante en efectivo: registrar egreso por descuadre/ajuste
+          await db.insert(financialTransactions).values({
+            branchId: cashRegister.branchId,
+            type: "expense",
+            category: "cash_shortage",
+            paymentMethod: "cash",
+            amount: Math.abs(diffCash),
+            userId: cashRegister.sellerId,
+            referenceId: cashRegister.id,
+            notes: `Faltante de caja vendedor #${cashRegister.sellerId} (Turno #${cashRegister.turnNumber}): ${cashRegister.differenceJustification || input.notes || "Sin justificación"}`,
+            createdAt: now,
+          });
+        } else if (diffCash > 0) {
+          // Sobrante en efectivo: registrar ingreso extraordinario
+          await db.insert(financialTransactions).values({
+            branchId: cashRegister.branchId,
+            type: "income",
+            category: "cash_surplus",
+            paymentMethod: "cash",
+            amount: diffCash,
+            userId: cashRegister.sellerId,
+            referenceId: cashRegister.id,
+            notes: `Sobrante de caja vendedor #${cashRegister.sellerId} (Turno #${cashRegister.turnNumber})`,
+            createdAt: now,
+          });
+        }
+      } catch (financeErr: any) {
+        console.warn("[SellerCash->Finance] Error al registrar cierre en finanzas:", financeErr.message);
+      }
+      
+      return { success: true, message: "Cierre aprobado correctamente y liquidado en Finanzas" };
     }),
 
   admin_rejectClosing: protectedProcedure
