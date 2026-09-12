@@ -605,9 +605,21 @@ export const sellerCashRouter = router({
         })
         .where(eq(sellerCashRegisters.id, input.cashRegisterId));
       
-      // Integración Financiera: Registrar fondo de apertura en cash_openings si hay efectivo inicial
+      // Integración Financiera: Descontar de Caja Principal (Egreso en Finanzas) y registrar en cash_openings
       if (cashRegister.initialCash > 0) {
         try {
+          await db.insert(financialTransactions).values({
+            branchId: cashRegister.branchId,
+            type: "expense",
+            category: "caja_vendedor_fondo",
+            amount: cashRegister.initialCash,
+            paymentMethod: "cash",
+            userId: ctx.user.id,
+            referenceId: cashRegister.id,
+            notes: `Salida Caja Principal: Entrega de fondo de cambio a vendedor #${cashRegister.sellerId} (Caja #${cashRegister.id} Turno #${cashRegister.turnNumber})`,
+            createdAt: now,
+          });
+
           await db.insert(cashOpenings).values({
             openingDate: cashRegister.date,
             openingAmount: cashRegister.initialCash,
@@ -616,13 +628,14 @@ export const sellerCashRouter = router({
             openedByUserId: ctx.user.id,
             status: "open",
             notes: `Apertura caja vendedor #${cashRegister.sellerId} (Turno #${cashRegister.turnNumber}) - Fondo inicial`,
+            createdAt: now,
           });
         } catch (openingErr: any) {
-          console.warn("[SellerCash->Finance] Error al registrar cash_opening:", openingErr.message);
+          console.warn("[SellerCash->Finance] Error al registrar egreso de apertura:", openingErr.message);
         }
       }
       
-      return { success: true, message: "Apertura aprobada correctamente y registrada en Finanzas" };
+      return { success: true, message: "Apertura aprobada correctamente, descontada de Caja Principal y registrada en Finanzas" };
     }),
 
   admin_rejectOpening: protectedProcedure
@@ -742,6 +755,21 @@ export const sellerCashRouter = router({
             userId: cashRegister.sellerId,
             referenceId: cashRegister.id,
             notes: `Sobrante de caja vendedor #${cashRegister.sellerId} (Turno #${cashRegister.turnNumber})`,
+            createdAt: now,
+          });
+        }
+
+        // Reingreso del fondo inicial a la Caja Principal
+        if (cashRegister.initialCash > 0) {
+          await db.insert(financialTransactions).values({
+            branchId: cashRegister.branchId,
+            type: "income",
+            category: "caja_vendedor_devolucion_fondo",
+            paymentMethod: "cash",
+            amount: cashRegister.initialCash,
+            userId: ctx.user.id,
+            referenceId: cashRegister.id,
+            notes: `Entrada Caja Principal: Retorno de fondo de cambio de caja vendedor #${cashRegister.sellerId} (Caja #${cashRegister.id} Turno #${cashRegister.turnNumber})`,
             createdAt: now,
           });
         }
@@ -1071,24 +1099,60 @@ export const sellerCashRouter = router({
 
       const branchId = ctx.branchId || 1;
 
+      const initialCashCentavos = Math.round(input.initialCash * 100);
+      const now = new Date();
+
       // Crear caja directamente aprobada
-      await db.insert(sellerCashRegisters).values({
+      const [insertRes] = await db.insert(sellerCashRegisters).values({
         sellerId: input.sellerId,
         branchId,
         date: today,
         turnNumber: nextTurnNumber,
         openingStatus: "approved",          // ya aprobada — el admin la abre directamente
         openingApprovedBy: ctx.user.id,
-        openingApprovedAt: new Date(),
-        initialCash: Math.round(input.initialCash * 100),
-        openedAt: new Date(),
+        openingApprovedAt: now,
+        initialCash: initialCashCentavos,
+        openedAt: now,
         openingNotes: input.notes
           ? `Apertura directa por admin: ${input.notes}`
           : `Apertura directa realizada por administrador`,
         closingStatus: "open",
       });
 
-      return { success: true, message: `Caja abierta correctamente para el vendedor` };
+      const boxId = (insertRes as any)?.insertId;
+
+      // Descuento automático de la Caja Principal (Egreso en Finanzas)
+      if (initialCashCentavos > 0) {
+        try {
+          const sellerName = (seller as any)?.name || (seller as any)?.username || `Vendedor #${input.sellerId}`;
+          await db.insert(financialTransactions).values({
+            branchId,
+            type: "expense",
+            category: "caja_vendedor_fondo",
+            amount: initialCashCentavos,
+            paymentMethod: "cash",
+            userId: ctx.user.id,
+            referenceId: boxId || null,
+            notes: `Salida Caja Principal: Entrega de fondo de cambio para ${sellerName} (Turno #${nextTurnNumber})`,
+            createdAt: now,
+          });
+
+          await db.insert(cashOpenings).values({
+            openingDate: today,
+            openingAmount: initialCashCentavos,
+            paymentMethod: "cash",
+            responsibleUserId: input.sellerId,
+            openedByUserId: ctx.user.id,
+            status: "open",
+            notes: `Apertura directa caja vendedor #${input.sellerId} (Turno #${nextTurnNumber})`,
+            createdAt: now,
+          });
+        } catch (fErr: any) {
+          console.warn("[admin_openForSeller->Finance] Error al registrar egreso de fondo:", fErr.message);
+        }
+      }
+
+      return { success: true, message: `Caja abierta correctamente para el vendedor y descontada de Caja Principal` };
     }),
 
   /**

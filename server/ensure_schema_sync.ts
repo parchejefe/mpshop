@@ -162,7 +162,31 @@ export async function syncDatabaseSchema(poolOrConn: any): Promise<{
         WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE name = 'Proveedor Genérico (Compra Directa)')
       `);
 
-      console.log("[SchemaSync] ✓ Base seeds ensured (Branch 1, Proveedor Genérico)");
+      // 3. Sincronizar fondos de apertura de cajas de vendedores abiertas sin egreso registrado
+      await poolOrConn.query(`
+        INSERT INTO financialTransactions (branchId, type, category, amount, paymentMethod, userId, referenceId, notes, createdAt)
+        SELECT 
+          scr.branchId,
+          'expense',
+          'caja_vendedor_fondo',
+          scr.initialCash,
+          'cash',
+          COALESCE(scr.openingApprovedBy, scr.sellerId),
+          scr.id,
+          CONCAT('Salida Caja Principal: Entrega de fondo de cambio para vendedor #', scr.sellerId, ' (Turno #', scr.turnNumber, ')'),
+          COALESCE(scr.openedAt, scr.createdAt)
+        FROM seller_cash_registers scr
+        WHERE scr.openingStatus = 'approved' 
+          AND scr.closingStatus = 'open'
+          AND scr.initialCash > 0
+          AND NOT EXISTS (
+            SELECT 1 FROM financialTransactions ft 
+            WHERE ft.category = 'caja_vendedor_fondo' 
+              AND ft.referenceId = scr.id
+          )
+      `);
+
+      console.log("[SchemaSync] ✓ Base seeds ensured (Branch 1, Proveedor Genérico, Fondos de Caja Vendedor)");
     } catch (seedErr: any) {
       console.warn("[SchemaSync] Note on base seeds:", seedErr.message);
     }
