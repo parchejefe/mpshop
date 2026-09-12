@@ -1011,28 +1011,40 @@ export async function deleteUser(id: number) {
   }
   
   // Desactivar temporalmente revisión de claves foráneas para permitir eliminación en cascada limpia
+  const safeCleanup = async (queryStr: string) => {
+    try {
+      await db.execute(sql.raw(queryStr));
+    } catch {
+      // Ignorar si la tabla o columna no existe en la base de datos
+    }
+  };
+
   try {
     await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0;`);
     
     // 1. Limpiar sesiones y asignaciones a sucursales
-    await db.execute(sql`DELETE FROM sessions WHERE userId = ${id};`);
-    await db.execute(sql`DELETE FROM userBranches WHERE userId = ${id};`);
+    await safeCleanup(`DELETE FROM sessions WHERE userId = ${id}`);
+    await safeCleanup(`DELETE FROM userBranches WHERE userId = ${id}`);
+    await safeCleanup(`DELETE FROM user_branches WHERE user_id = ${id}`);
     
     // 2. Limpiar registros de cajas de vendedores si existen
-    await db.execute(sql`DELETE FROM seller_cash_expenses WHERE sellerId = ${id};`);
-    await db.execute(sql`DELETE FROM seller_partial_deliveries WHERE sellerId = ${id};`);
-    await db.execute(sql`DELETE FROM seller_cash_registers WHERE sellerId = ${id};`);
-    await db.execute(sql`DELETE FROM cash_closures WHERE userId = ${id};`);
-    await db.execute(sql`DELETE FROM cash_openings WHERE responsibleUserId = ${id} OR openedByUserId = ${id};`);
+    await safeCleanup(`DELETE FROM seller_cash_expenses WHERE sellerId = ${id}`);
+    await safeCleanup(`DELETE FROM seller_partial_deliveries WHERE sellerId = ${id}`);
+    await safeCleanup(`DELETE FROM seller_cash_registers WHERE sellerId = ${id}`);
+    await safeCleanup(`DELETE FROM cash_closures WHERE userId = ${id}`);
+    await safeCleanup(`DELETE FROM cash_openings WHERE responsibleUserId = ${id} OR openedByUserId = ${id}`);
     
-    // 3. Limpiar logs y tracking
-    await db.execute(sql`DELETE FROM auditLog WHERE userId = ${id};`);
-    await db.execute(sql`DELETE FROM gpsTracking WHERE userId = ${id};`);
+    // 3. Limpiar logs y tracking (en gpsTracking la columna es deliveryPersonId)
+    await safeCleanup(`DELETE FROM auditLog WHERE userId = ${id}`);
+    await safeCleanup(`DELETE FROM gpsTracking WHERE deliveryPersonId = ${id}`);
+    await safeCleanup(`DELETE FROM gps_tracking WHERE delivery_person_id = ${id}`);
     
-    // 4. Eliminar el usuario
-    await db.delete(users).where(eq(users.id, id));
+    // 4. Eliminar el usuario directamente
+    await db.execute(sql`DELETE FROM users WHERE id = ${id}`);
   } finally {
-    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1;`);
+    try {
+      await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1;`);
+    } catch {}
   }
 }
 
