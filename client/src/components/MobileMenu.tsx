@@ -68,8 +68,8 @@ const ADMIN_SECTIONS = [
       { href: "/accounts-receivable",       label: "C. por Cobrar",         icon: CreditCard },
       { href: "/accounts-payable",          label: "C. por Pagar",          icon: Landmark },
       { href: "/expenses",                  label: "Gastos",                icon: Receipt },
-      { href: "/admin/control-financiero",  label: "🔔 Control Financiero", icon: DollarSign },
-      { href: "/admin/auditoria-datos",     label: "🔍 Auditoría Datos",    icon: Receipt },
+      // { href: "/admin/control-financiero",  label: "🔔 Control Financiero", icon: DollarSign }, // OCULTO
+      // { href: "/admin/auditoria-datos",     label: "🔍 Auditoría Datos",    icon: Receipt }, // OCULTO
       // { href: "/repartidor/finance",     label: "Caja Reparto",          icon: DollarSign }, // OCULTO
     ],
   },

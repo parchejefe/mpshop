@@ -74,10 +74,10 @@ export const ADMIN_NAV_ROW2: NavItem[] = [
   { href: "/reports",                      label: "📈 Reportes",           icon: BarChart3,  moduleKey: "reports" },
   { href: "/analytics",                   label: "Analítica",              icon: TrendingUp, moduleKey: "analytics" },
   { href: "/admin/rentabilidad",          label: "💰 Rentabilidad",       icon: TrendingUp, moduleKey: "finance", adminOnly: true },
-  { href: "/admin/control-financiero",    label: "🔔 Control Financiero", icon: DollarSign, moduleKey: "finance", adminOnly: true },
+  // { href: "/admin/control-financiero",    label: "🔔 Control Financiero", icon: DollarSign, moduleKey: "finance", adminOnly: true }, // OCULTO
   { href: "/finance",                     label: "Finanzas",               icon: DollarSign, moduleKey: "finance" },
   { href: "/admin/cajas-vendedores",      label: "🏪 Cajas Vendedores",   icon: Store,      moduleKey: "seller-boxes-admin", adminOnly: true },
-  { href: "/admin/auditoria-datos",       label: "🔍 Auditoría Datos",    icon: BarChart3,  moduleKey: "seller-boxes-admin", adminOnly: true },
+  // { href: "/admin/auditoria-datos",       label: "🔍 Auditoría Datos",    icon: BarChart3,  moduleKey: "seller-boxes-admin", adminOnly: true }, // OCULTO
   // { href: "/repartidor/finance",       label: "Caja Reparto",           icon: DollarSign, moduleKey: "repartidor-finance" },  // OCULTO
   { href: "/vendedor/caja",               label: "Mi Caja",                icon: Wallet,     moduleKey: "seller-cash",  sellerOnly: true },
   { href: "/accounts-receivable",         label: "C. por Cobrar",          icon: CreditCard, moduleKey: "accounts-receivable" },
@@ -392,10 +392,10 @@ export default function AppHeader() {
               <QuickScannerInput />
             )}
 
-            {/* 🔔 Notificaciones — Badge de alertas para admin */}
-            {user?.role === "admin" && (
+            {/* 🔔 Notificaciones — Badge de alertas para admin (Oculto a petición) */}
+            {/* {user?.role === "admin" && (
               <NotificationBell />
-            )}
+            )} */}
 
             {/* Ctrl+K Search Trigger */}
             <button
